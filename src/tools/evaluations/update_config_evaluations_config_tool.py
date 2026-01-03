@@ -1,0 +1,50 @@
+"""Update Config"""
+
+from typing import Any
+from src.tools.base import BaseTool
+from src.utils.validation import ToolInputValidator
+
+
+class UpdateConfigEvaluationsConfigTool(BaseTool):
+    """Update Config"""
+
+    def get_definition(self) -> dict[str, Any]:
+        """Get MCP tool definition."""
+        return {
+            "name": "update_config_evaluations_config",
+            "description": "Update Config",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ENABLE_EVALUATION_ARENA_MODELS": {
+                        "type": ["boolean", "null"],
+                        "description": "Enable evaluation arena models (optional)"
+                    },
+                    "EVALUATION_ARENA_MODELS": {
+                        "type": ["array", "null"],
+                        "items": {"type": "object", "additionalProperties": True},
+                        "description": "Array of evaluation arena model configurations (optional)"
+                    }
+                },
+                "required": []
+            }
+        }
+
+    async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Execute update_config_evaluations_config operation."""
+        self._log_execution_start(arguments)
+
+
+
+        # Build request
+        json_data = {}
+
+        if "ENABLE_EVALUATION_ARENA_MODELS" in arguments:
+            json_data["ENABLE_EVALUATION_ARENA_MODELS"] = arguments["ENABLE_EVALUATION_ARENA_MODELS"]
+        if "EVALUATION_ARENA_MODELS" in arguments:
+            json_data["EVALUATION_ARENA_MODELS"] = arguments["EVALUATION_ARENA_MODELS"]
+
+        response = await self.client.post("/api/v1/evaluations/config", json_data=json_data)
+
+        self._log_execution_end(response)
+        return response
