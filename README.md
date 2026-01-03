@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server providing programmatic access to Open WebUI's REST API. Built with Python 3.10+ and HTTP SSE transport.
 
+> **Part of [mcp-servers](https://github.com/skribblez2718/mcp-servers)** - A collection of custom MCP servers.
+
 ## Features
 
 - **329 MCP Tools** - Complete coverage of Open WebUI's REST API
