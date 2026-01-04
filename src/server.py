@@ -11,7 +11,7 @@ from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import Tool
 from starlette.applications import Starlette
-from starlette.routing import Route
+from starlette.routing import Route, Mount
 from starlette.requests import Request
 from starlette.responses import Response
 from src.tools.factory import ToolFactory
@@ -117,8 +117,8 @@ async def call_tool(name: str, arguments: dict) -> dict:
         }
 
 
-# Create SSE transport
-sse = SseServerTransport("/messages")
+# Create SSE transport (trailing slash required per MCP SDK convention)
+sse = SseServerTransport("/messages/")
 
 
 async def handle_sse(request: Request) -> Response:
@@ -143,24 +143,13 @@ async def handle_sse(request: Request) -> Response:
     return Response()
 
 
-async def handle_messages(request: Request) -> Response:
-    """Handle MCP message posts.
-
-    Args:
-        request: Starlette request object
-
-    Returns:
-        Empty response
-    """
-    await sse.handle_post_message(request.scope, request.receive, request._send)
-    return Response()
-
-
 # Create Starlette app with MCP routes
+# Note: handle_post_message is an ASGI app, so we use Mount instead of Route
+# This avoids the double-response error that occurs when wrapping it in a Route handler
 app = Starlette(
     routes=[
         Route("/sse", endpoint=handle_sse),
-        Route("/messages", endpoint=handle_messages, methods=["POST"]),
+        Mount("/messages", app=sse.handle_post_message),
     ],
 )
 

@@ -22,7 +22,7 @@ A Model Context Protocol (MCP) server providing programmatic access to Open WebU
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-## Quick Start
+## Quick Start (Development)
 
 ```bash
 # Clone and install
@@ -35,6 +35,62 @@ cp .env.example .env
 
 # Start server
 uv run python -m src.server
+```
+
+## Production Installation (Systemd)
+
+For production deployments, use the automated installation script which sets up a systemd service:
+
+```bash
+# Run as root or with sudo
+sudo ./deployment/scripts/install.sh
+```
+
+The script will:
+1. Create a dedicated `open-webui-mcp` system user
+2. Install dependencies in an isolated virtual environment
+3. **Prompt you for configuration:**
+   - Open WebUI URL (e.g., `http://localhost:8080`)
+   - API Key (input hidden for security)
+4. Configure the systemd service
+5. Start the service automatically
+
+### Getting Your API Key
+
+Before running the install script, generate an API key from Open WebUI:
+1. Log into your Open WebUI instance
+2. Go to **Settings → Account → API Keys**
+3. Click **Create new secret key**
+4. Copy the generated key (format: `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`)
+
+### Service Management
+
+After installation, manage the service with:
+
+```bash
+# Check status
+sudo systemctl status open-webui-mcp.service
+
+# View logs
+sudo journalctl -u open-webui-mcp.service -f
+
+# Restart (after config changes)
+sudo systemctl restart open-webui-mcp.service
+
+# Stop
+sudo systemctl stop open-webui-mcp.service
+
+# Start
+sudo systemctl start open-webui-mcp.service
+```
+
+### Reconfiguring
+
+To update the URL or API key after installation:
+
+```bash
+sudo nano /home/open-webui-mcp/.env
+sudo systemctl restart open-webui-mcp.service
 ```
 
 ## Environment Variables
@@ -170,7 +226,3 @@ curl http://127.0.0.1:8000/sse
 # In Claude: "Check Open WebUI health status"
 # Should invoke admin_health tool
 ```
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file.

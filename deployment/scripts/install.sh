@@ -185,6 +185,66 @@ set_permissions() {
     log_info "Permissions set"
 }
 
+prompt_configuration() {
+    echo ""
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}Configuration Setup${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+
+    # Prompt for Open WebUI URL
+    echo -e "${YELLOW}Enter your Open WebUI URL${NC}"
+    echo -e "  Example: ${GREEN}http://localhost:8080${NC}"
+    echo -e "  Example: ${GREEN}https://openwebui.example.com${NC}"
+    echo ""
+    read -p "Open WebUI URL: " OPENWEBUI_URL
+
+    # Validate URL is not empty
+    if [[ -z "$OPENWEBUI_URL" ]]; then
+        log_error "Open WebUI URL cannot be empty"
+        exit 1
+    fi
+
+    echo ""
+
+    # Prompt for API key (securely - hidden input)
+    echo -e "${YELLOW}Enter your Open WebUI API Key${NC}"
+    echo -e "  To generate an API key:"
+    echo -e "    1. Log into Open WebUI"
+    echo -e "    2. Go to ${GREEN}Settings → Account → API Keys${NC}"
+    echo -e "    3. Click ${GREEN}Create new secret key${NC}"
+    echo -e "    4. Copy the generated key"
+    echo ""
+    echo -e "  Example format: ${GREEN}sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx${NC}"
+    echo ""
+    read -s -p "API Key (input hidden): " OPENWEBUI_API_KEY
+    echo ""  # Add newline after hidden input
+
+    # Validate API key is not empty
+    if [[ -z "$OPENWEBUI_API_KEY" ]]; then
+        log_error "API Key cannot be empty"
+        exit 1
+    fi
+
+    echo ""
+    log_info "Configuration received"
+}
+
+configure_env_file() {
+    log_info "Configuring .env file with provided values..."
+
+    # Update the .env file with user-provided values
+    # Use sed to replace the placeholder values
+    sed -i "s|^OPENWEBUI_BASE_URL=.*|OPENWEBUI_BASE_URL=$OPENWEBUI_URL|" "$INSTALL_DIR/.env"
+    sed -i "s|^OPENWEBUI_API_KEY=.*|OPENWEBUI_API_KEY=$OPENWEBUI_API_KEY|" "$INSTALL_DIR/.env"
+
+    # Secure the file permissions
+    chmod 600 "$INSTALL_DIR/.env"
+    chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/.env"
+
+    log_info ".env file configured successfully"
+}
+
 install_systemd_service() {
     log_info "Installing systemd service..."
 
@@ -201,11 +261,11 @@ install_systemd_service() {
 }
 
 enable_service() {
-    log_info "Enabling systemd service..."
+    log_info "Enabling and starting systemd service..."
 
-    systemctl enable "$SERVICE_FILE"
+    systemctl enable --now "$SERVICE_FILE"
 
-    log_info "Service enabled (will start on boot)"
+    log_info "Service enabled and started"
 }
 
 run_tests() {
@@ -226,41 +286,44 @@ print_post_install() {
     echo -e "${GREEN}Installation Complete!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
-    echo -e "${YELLOW}Next Steps:${NC}"
+    echo -e "${GREEN}✓ Service configured and running${NC}"
     echo ""
-    echo "1. Configure the service:"
-    echo -e "   ${GREEN}sudo nano $INSTALL_DIR/.env${NC}"
-    echo "   - Set OPENWEBUI_BASE_URL to your Open WebUI instance"
-    echo "   - Set OPENWEBUI_API_KEY to your API key (REQUIRED)"
-    echo "     Get API key from: Open WebUI → Settings → Account → API Keys"
+    echo -e "${YELLOW}Verify Installation:${NC}"
     echo ""
-    echo "2. Start the service:"
-    echo -e "   ${GREEN}sudo systemctl start $SERVICE_FILE${NC}"
-    echo ""
-    echo "3. Check service status:"
+    echo "1. Check service status:"
     echo -e "   ${GREEN}sudo systemctl status $SERVICE_FILE${NC}"
     echo ""
-    echo "4. View logs:"
+    echo "2. View logs:"
     echo -e "   ${GREEN}sudo journalctl -u $SERVICE_FILE -f${NC}"
     echo ""
-    echo "5. Configure MCP client (e.g., Claude Desktop):"
-    echo "   Add to your MCP client configuration:"
+    echo "3. Test the MCP server:"
+    echo -e "   ${GREEN}curl http://127.0.0.1:8000/sse${NC}"
+    echo ""
+    echo -e "${YELLOW}Configure MCP Client:${NC}"
+    echo ""
+    echo "Claude Code:"
+    echo -e "   ${GREEN}claude mcp add open-webui --transport sse http://127.0.0.1:8000/sse${NC}"
+    echo ""
+    echo "Claude Desktop / Cursor / Windsurf - add to config:"
     echo "   {"
-    echo "     \"open-webui\": {"
-    echo "       \"command\": \"$INSTALL_DIR/.venv/bin/python\","
-    echo "       \"args\": [\"$INSTALL_DIR/src/server.py\"],"
-    echo "       \"env\": {"
-    echo "         \"OPENWEBUI_BASE_URL\": \"http://localhost:8080\""
+    echo "     \"mcpServers\": {"
+    echo "       \"open-webui\": {"
+    echo "         \"type\": \"sse\","
+    echo "         \"url\": \"http://127.0.0.1:8000/sse\""
     echo "       }"
     echo "     }"
     echo "   }"
     echo ""
-    echo -e "${YELLOW}Management Scripts:${NC}"
+    echo -e "${YELLOW}Service Management:${NC}"
     echo -e "   Start:   ${GREEN}sudo systemctl start $SERVICE_FILE${NC}"
     echo -e "   Stop:    ${GREEN}sudo systemctl stop $SERVICE_FILE${NC}"
     echo -e "   Restart: ${GREEN}sudo systemctl restart $SERVICE_FILE${NC}"
     echo -e "   Status:  ${GREEN}sudo systemctl status $SERVICE_FILE${NC}"
     echo -e "   Logs:    ${GREEN}sudo journalctl -u $SERVICE_FILE -f${NC}"
+    echo ""
+    echo -e "${YELLOW}Reconfigure (if needed):${NC}"
+    echo -e "   ${GREEN}sudo nano $INSTALL_DIR/.env${NC}"
+    echo -e "   ${GREEN}sudo systemctl restart $SERVICE_FILE${NC}"
     echo ""
 }
 
@@ -277,6 +340,11 @@ main() {
     copy_source
     create_venv
     setup_environment
+
+    # Interactive configuration (prompt for URL and API key)
+    prompt_configuration
+    configure_env_file
+
     set_permissions
     install_systemd_service
     enable_service
